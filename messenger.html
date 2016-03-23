@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags always come first -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css" integrity="sha384-y3tfxAZXuh4HwSYylfB+J125MxIs6mR5FOHamPBG064zB+AFeWH94NdvaCBm8qnd" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.rawgit.com/HubSpot/tether/master/dist/css/tether.min.css">
+
+    <style>
+      #messenger {
+        display: flex;
+        height: 100vh;
+      }
+
+      ol, ul, p {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      #messenger > aside {
+        display: flex;
+        flex-direction: column;
+        width: 250px;
+        border-right: 1px solid #ccc;
+      }
+
+      #messenger > aside > header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 4em;
+        border-bottom: 1px solid #ccc;
+      }
+
+      #messenger > aside > .conversation-list {
+        flex: 1;
+      }
+
+      .conversation-list .conversation {
+        display: flex;
+        padding: 1em;
+        align-items: center;
+      }
+
+      .conversation-list .conversation .details {
+        order: 1;
+        flex: 0 1 auto;
+        overflow: hidden;
+        min-width: 0;
+      }
+
+      .conversation-list .conversation .display-picture {
+        min-width: 3em;
+        min-height: 3em;
+        background-color: #5CB85C;
+        border-radius: 5pt;
+        margin: 0 1em 0 0;
+      }
+
+      .conversation-list .conversation .message-teaser {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #messenger > main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #messenger > main > .chat-header {
+        height: 4em;
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #messenger > main > .chat {
+        flex: 1;
+        display: flex;
+        flex-direction: column-reverse;
+      }
+
+      #messenger > main > .chat-input {
+        border-top: 1px solid #ccc;
+        padding: 1em;
+      }
+
+      #messenger > main > .chat > .conversation {
+        width: 100%;
+        padding: 1em;
+      }
+
+      #messenger > main > .chat > .conversation .message {
+        display: flex;
+        margin-bottom: 0.5em;
+        align-items: center;
+      }
+
+      #messenger > main > .chat > .conversation .message.event {
+        justify-content: center;
+        opacity: 0.5;
+      }
+
+      #messenger > main > .chat > .conversation .message .bubble {
+        background-color: #ccc;
+        padding: 0.5em 1em;
+        border-radius: 10pt;
+        max-width: 15em;
+      }
+
+      #messenger > main > .chat > .conversation .message.me {
+        justify-content: flex-end;
+      }
+
+      #messenger > main > .chat > .conversation .message.me .bubble {
+        background-color: #fafafa;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div v-if="!authenticated">
+        <auth />
+      </div>
+      <div v-else>
+        <messenger :authenticated-as="auth.username" />
+      </div>
+    </div>
+
+    <!-- jQuery first, then Bootstrap JS. -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://cdn.rawgit.com/HubSpot/tether/master/dist/js/tether.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/js/bootstrap.min.js" integrity="sha384-vZ2WRJMwsjRMW/8U7i6PWi6AlO1L79snBrmgiDpgIWJ82z8eA5lenwvxbMV1PAh7" crossorigin="anonymous"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.rawgit.com/vuejs/vue/dev/dist/vue.min.js"></script>
+
+    <script id="auth-template" type="x/template">
+      <div class="container-fluid" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div class="col-xs-3">
+          <div class="card">
+            <div class="card-block">
+              <h4 class="card-title text-xs-center m-b-2">Login</h4>
+              <form @submit="onFormSubmit($event)">
+                <fieldset class="form-group username">
+                  <input id="username-input" class="form-control" type="text" placeholder="Username" v-model="username" autofocus>
+                </fieldset>
+                <fieldset class="form-group passphrase">
+                  <input id="passphrase-input" class="form-control" type="password" placeholder="Passphrase" v-model="passphrase">
+                </fieldset>
+                <button class="btn btn-primary btn-block" type="submit">Continue</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </script>
+    <script id="messenger-template" type="x/template">
+      <div id="messenger">
+        <aside>
+          <header>
+            Pupil<br>
+            <small>Logged in as </small>
+          </header>
+          <ol class="conversation-list">
+          <li class="conversation bg-faded" v-for="user in userList" :class="{active: user.username == selectedConversation.username}">
+              <figure class="display-picture"></figure>
+              <div class="details">
+                <strong class="name">{{user.username}}</strong>
+                <p class="message-teaser">hi</p>
+              </div>
+            </li>
+          </ol>
+        </aside>
+        <main>
+          <div class="chat-header">{{selectedConversation.username}}</div>
+          <div class="chat">
+            <div class="conversation">
+              <div class="message event">You are now connected with a tutor</div>
+              <div class="message me">
+                <div class="bubble">hello</div>
+              </div>
+              <div class="message other">
+                <div class="bubble">hi</div>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input">
+            <form id="message-input-form" autocomplete="off">
+              <input id="message-input" class="form-control" type="" placeholder="Type your message here" autofocus>
+            </form>
+          </div>
+        </main>
+      </div>
+    </script>
+
+    <script>
+      var m;
+      Vue.component('messenger', {
+        template: '#messenger-template',
+        props: ['authenticatedAs'],
+        data: function(){
+          return {
+            socket: null,
+            selectedConversation: null,
+            onlineUsers: {}
+          }
+        },
+        computed: {
+          userList: function(){
+            return Object.keys(this.onlineUsers).map(function(key){
+              return { username: key }
+            })
+          }
+        },
+        created: function(){
+          m = this;
+          // tell the server you're online
+          var socket = this.socket = io();
+          var self = this;
+
+          socket.on('connect', function(){
+            socket.emit('status', {
+              token: window.localStorage.getItem('jwt'),
+              status: 'online'
+            })
+          })
+
+          socket.on('status', function(status){
+            console.log('status', status);
+            if (status.status == 'online'){
+              self.$set('onlineUsers.'+status.user, 'online');
+
+              if (!self.selectedConversation) self.selectedConversation = self.userList[0];
+            }
+          })
+        }
+      })
+
+      Vue.component('auth', {
+        template: "#auth-template",
+        data: {
+          username: '',
+          passphrase: ''
+        },
+        methods: {
+          onFormSubmit: function(event){
+            event.preventDefault();
+            $('.has-danger').removeClass('has-danger');
+            this.authenticate(
+              this.username,
+              this.passphrase
+            )
+          },
+          authenticate: function(username, passphrase){
+            var self = this;
+
+            $.post('/login', {
+              username: username,
+              passphrase: passphrase
+            }, function(res){
+              window.localStorage.setItem('jwt', res.token);
+              self.authenticated = app.authenticated = true;
+              app.auth = {
+                username: res.username
+              };
+            }, 'json').fail(function(res){
+              switch(res.responseJSON.message){
+                case 'User not found': 
+                  return $('.form-group.username').addClass('has-danger').find('input').focus();
+                case 'Incorrect passphrase':
+                  return $('.form-group.passphrase').addClass('has-danger').find('input').focus();
+              }
+            })
+          }
+        }
+      })
+
+      var app = new Vue({
+        el: '#app',
+        data: {
+          authenticated: false,
+          auth: {
+            username: null
+          }
+        }
+      })
+    </script>
+  </body>
+</html>
