@@ -1,0 +1,18 @@
+{
+  "jeff": {
+    "passphrase": "dogs",
+    "roles": ["tutor"]
+  },
+  "sam": {
+    "passphrase": "frogs",
+    "roles": ["tutor"]
+  },
+  "cindy": {
+    "passphrase": "logs",
+    "roles": ["tutor"]
+  },
+  "patrick": {
+    "passphrase": "cats",
+    "roles": []
+  }
+}
