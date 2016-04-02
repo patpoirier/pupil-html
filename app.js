@@ -79,12 +79,13 @@ io.on('connection', function (socket) {
   io.emit('contacts', contacts);
 
   socket.on('disconnect', () => {
-    var contact;
-    for (var i = 0; i < contacts.length; i++){
-      contact = contacts[i];
-      if (contact.username == username) contact.isOnline = false;
-    }
+    contacts = contacts.map((contact) => {
+      if (contact.username != username) return contact;
+      contact.isOnline = false;
+      return contact;
+    })
 
+    io.emit('contacts', contacts);
     util.log(`${username} signed off`);
   })
 })

@@ -144,7 +144,7 @@
     <script src="https://cdn.rawgit.com/HubSpot/tether/master/dist/js/tether.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/js/bootstrap.min.js" integrity="sha384-vZ2WRJMwsjRMW/8U7i6PWi6AlO1L79snBrmgiDpgIWJ82z8eA5lenwvxbMV1PAh7" crossorigin="anonymous"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdn.rawgit.com/vuejs/vue/dev/dist/vue.min.js"></script>
+    <script src="https://rawgit.com/vuejs/vue/89b4ee9cd0ec2305199e9ce3dd199e5bf7653ac4/dist/vue.min.js"></script>
 
     <script id="auth-template" type="x/template">
       <div class="container-fluid" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
@@ -173,7 +173,11 @@
             Pupil
           </header>
           <ol class="conversation-list">
-          <li class="conversation" v-for="contact in contacts" v-if="contact.username != authenticatedAs" :class="{'active': false, 'is-online': contact.isOnline}">
+            <li class="conversation"
+              v-for="contact in contacts"
+              v-if="contact.username != authenticatedAs"
+              :class="{'is-online': contact.isOnline}"
+            >
               <figure class="display-picture"></figure>
               <div class="details">
                 <strong class="name">{{contact.username}}</strong>
@@ -211,9 +215,9 @@
         props: ['authenticatedAs'],
         data: function(){
           return {
-            socket: null,
-            selectedConversation: null,
-            contacts: null
+            socket: undefined,
+            selectedConversation: undefined,
+            contacts: []
           }
         },
         created: function(){
@@ -280,7 +284,7 @@
         data: {
           authenticated: false,
           auth: {
-            username: null
+            username: undefined
           }
         }
       })
