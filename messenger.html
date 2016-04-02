@@ -176,7 +176,8 @@
             <li class="conversation"
               v-for="contact in contacts"
               v-if="contact.username != authenticatedAs"
-              :class="{'is-online': contact.isOnline}"
+              :class="{'is-online': contact.isOnline, 'bg-faded': contact.username == selectedConversation.username}"
+              v-on:click="onContactClick(contact)"
             >
               <figure class="display-picture"></figure>
               <div class="details">
@@ -235,8 +236,20 @@
             socket.on('contacts', function(contacts){
               console.log('contacts', contacts);
               self.contacts = contacts;
+
+              if (!self.selectedConversation) {
+                self.selectedConversation = contacts[0];
+              }
             })
           })
+        },
+        methods: {
+          selectConversation: function(conversation){
+            this.selectedConversation = conversation;
+          },
+          onContactClick: function(contact){
+            this.selectConversation(contact);
+          }
         }
       })
 
