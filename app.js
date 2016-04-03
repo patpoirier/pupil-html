@@ -73,10 +73,16 @@ io.on('connection', function (socket) {
   // mark the user as online
   for (var i = 0; i < contacts.length; i++){
     var contact = contacts[i];
-    if (contact.username == username) contact.isOnline = true;
+    if (contact.username == username){
+      contact.isOnline = true;
+      contact.socketId = socket.id
+    }
   }
 
   io.emit('contacts', contacts);
+  contacts.forEach((contact) => {
+    socket.join([username, contact.username].sort().join(':'));
+  })
 
   socket.on('disconnect', () => {
     contacts = contacts.map((contact) => {
@@ -87,5 +93,15 @@ io.on('connection', function (socket) {
 
     io.emit('contacts', contacts);
     util.log(`${username} signed off`);
+  })
+
+  socket.on('message', (message) => {
+    var recipient = contacts.filter((contact) => {
+      return contact.username == message.recipient;
+    })[0];
+
+    message.sender = username;
+
+    io.to([message.recipient, username].sort().join(':')).emit('message', message);
   })
 })

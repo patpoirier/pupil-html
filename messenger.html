@@ -174,35 +174,32 @@
           </header>
           <ol class="conversation-list">
             <li class="conversation"
-              v-for="contact in contacts"
-              v-if="contact.username != authenticatedAs"
-              :class="{'is-online': contact.isOnline, 'bg-faded': contact.username == selectedConversation.username}"
-              v-on:click="onContactClick(contact)"
+              v-for="conversation in conversations"
+              v-if="conversation.contact.username != authenticatedAs"
+              :class="{'is-online': conversation.contact.isOnline, 'bg-faded': conversation.contact.username == selectedConversation.contact.username}"
+              @click="onConversationClick(conversation)"
             >
               <figure class="display-picture"></figure>
               <div class="details">
-                <strong class="name">{{contact.username}}</strong>
-                <p class="message-teaser">hi</p>
+                <strong class="name">{{conversation.contact.username}}</strong>
+                <p v-if="conversation.messages.length" class="message-teaser">{{conversation.messages[conversation.messages.length -1].body}}</p>
               </div>
             </li>
           </ol>
         </aside>
         <main>
-          <div class="chat-header">{{selectedConversation.username}}</div>
+          <div class="chat-header">{{selectedConversation.contact.username}}</div>
           <div class="chat">
             <div class="conversation">
-              <div class="message event">You are now connected with a tutor</div>
-              <div class="message me">
-                <div class="bubble">hello</div>
-              </div>
-              <div class="message other">
-                <div class="bubble">hi</div>
+              <div class="message event">You are now connected with {{selectedConversation.contact.username}}</div>
+              <div v-for="message in selectedConversation.messages" class="message" :class="{'me': message.sender == authenticatedAs, 'other': message.sender != authenticatedAs}">
+                <div class="bubble">{{message.body}}</div>
               </div>
             </div>
           </div>
           <div class="chat-input">
-            <form id="message-input-form" autocomplete="off">
-              <input id="message-input" class="form-control" type="" placeholder="Type your message here" autofocus>
+            <form id="message-input-form" autocomplete="off" @submit="onMessageSubmit($event)">
+              <input id="message-input" class="form-control" type="" placeholder="Type your message here" autofocus v-model="messageDraft">
             </form>
           </div>
         </main>
@@ -218,7 +215,8 @@
           return {
             socket: undefined,
             selectedConversation: undefined,
-            contacts: []
+            conversations: [],
+            messageDraft: ''
           }
         },
         created: function(){
@@ -235,11 +233,32 @@
           socket.on('connect', function(){
             socket.on('contacts', function(contacts){
               console.log('contacts', contacts);
-              self.contacts = contacts;
+              self.conversations = contacts.map(function(contact){
+                return {
+                  contact: contact,
+                  messages: []
+                }
+              });
 
               if (!self.selectedConversation) {
-                self.selectedConversation = contacts[0];
+                self.selectedConversation = self.conversations[0];
               }
+            })
+
+            socket.on('message', function(message){
+              console.log('message', message)
+              self.conversations = self.conversations.map(function(conversation){
+                var contactUsername = conversation.contact.username;
+
+                if (
+                  message.sender == self.authenticatedAs &&
+                  message.recipient == contactUsername
+                ) conversation.messages.push(message);
+
+                if (message.sender == contactUsername) conversation.messages.push(message)
+
+                return conversation;
+              })
             })
           })
         },
@@ -247,8 +266,22 @@
           selectConversation: function(conversation){
             this.selectedConversation = conversation;
           },
-          onContactClick: function(contact){
-            this.selectConversation(contact);
+          onConversationClick: function(conversation){
+            this.selectConversation(conversation);
+          },
+          onMessageSubmit: function(event){
+            event.preventDefault();
+
+            this.sendMessage({
+              body: this.messageDraft,
+              recipient: this.selectedConversation.contact.username,
+              created: new Date()
+            });
+
+            this.messageDraft = '';
+          },
+          sendMessage: function(message){
+            this.socket.emit('message', message);
           }
         }
       })
