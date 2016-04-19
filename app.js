@@ -1,6 +1,7 @@
 'use strict';
 
 var util = require('util');
+var request = require('request');
 var app = require('express')();
 var http = require('http').Server(app);
 var bodyParser = require('body-parser');
@@ -10,6 +11,7 @@ var socketioJwt = require('socketio-jwt');
 var users = require('./users');
 
 let AUTH_SECRET = 'erudite-rocks';
+let PUPIL_API_URL = 'http://45.55.187.52:3000';
 
 var contacts = Object.keys(users).map((username) => {
   return {
@@ -53,6 +55,22 @@ app.post('/login', (req, res) => {
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/messenger.html');
 });
+
+app.get('/conversations/:id', (req, res) => {
+  request({
+    url: PUPIL_API_URL +'/conversations/'+ req.params.id,
+    method: 'GET'
+  }, (error, response, body) => {
+    if (error) {
+      console.log('error', error);
+      return res.status(500).json({
+        error: 'There was a server error'
+      })
+    }
+
+    res.json(body);
+  })
+})
 
 http.listen(3000, function(){
   console.log('listening on *:3000');
@@ -101,6 +119,15 @@ io.on('connection', function (socket) {
     })[0];
 
     message.sender = username;
+
+    request({
+      url: 'http://45.55.187.52:3000/messages',
+      method: 'POST',
+      json: message
+    }, (error, response, body) => {
+      if (error) return console.log(error);
+      console.log('stored:', body);
+    })
 
     io.to([message.recipient, username].sort().join(':')).emit('message', message);
   })

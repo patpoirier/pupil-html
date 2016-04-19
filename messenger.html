@@ -170,19 +170,23 @@
       <div id="messenger">
         <aside>
           <header>
-            Pupil
+            <strong>Pupil</strong>
           </header>
           <ol class="conversation-list">
             <li class="conversation"
-              v-for="conversation in conversations"
-              v-if="conversation.contact.username != authenticatedAs"
+              v-for="conversation in conversationList"
               :class="{'is-online': conversation.contact.isOnline, 'bg-faded': conversation.contact.username == selectedConversation.contact.username}"
               @click="onConversationClick(conversation)"
             >
               <figure class="display-picture"></figure>
               <div class="details">
                 <strong class="name">{{conversation.contact.username}}</strong>
-                <p v-if="conversation.messages.length" class="message-teaser">{{conversation.messages[conversation.messages.length -1].body}}</p>
+                <p v-if="conversation.messages.length" class="message-teaser">
+                  <span
+                    v-if="conversation.lastMessage.sender == authenticatedAs"
+                  >You: </span>
+                  {{conversation.lastMessage.body}}
+                </p>
               </div>
             </li>
           </ol>
@@ -219,6 +223,26 @@
             messageDraft: ''
           }
         },
+        computed: {
+          conversationList: function(){
+            var self = this;
+
+            var onlineContacts = this.conversations.filter(function(conv){
+              return conv.contact.isOnline;
+            })
+
+            var offlineContacts = this.conversations.filter(function(conv){
+              return !conv.contact.isOnline;
+            })
+
+            return onlineContacts.concat(offlineContacts).filter(function(conv){
+              return conv.contact.username != self.authenticatedAs
+            }).map(function(conv){
+              conv.lastMessage = conv.messages[conv.messages.length -1]
+              return conv;
+            });
+          }
+        },
         created: function(){
           m = this;
           var self = this;
@@ -241,8 +265,23 @@
               });
 
               if (!self.selectedConversation) {
-                self.selectedConversation = self.conversations[0];
+                self.selectedConversation = self.conversationList[0];
               }
+            })
+
+            socket.on('contacts', function(contacts){
+              self.conversations = self.conversations.map(function(conv){
+                var conversationUrl = [
+                  '/conversations',
+                  [self.authenticatedAs, conv.contact.username].join('.')
+                ].join('/')
+
+                $.get(conversationUrl, function(data){
+                  conv.messages = JSON.parse(data).messages;
+                })
+
+                return conv
+              })
             })
 
             socket.on('message', function(message){
@@ -265,6 +304,15 @@
         methods: {
           selectConversation: function(conversation){
             this.selectedConversation = conversation;
+
+            var conversationUrl = [
+              '/conversations',
+              [this.authenticatedAs, conversation.contact.username].join('.')
+            ].join('/')
+
+            $.get(conversationUrl, function(data){
+              conversation.messages = JSON.parse(data).messages;
+            })
           },
           onConversationClick: function(conversation){
             this.selectConversation(conversation);
